@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Habit Tracker Prototype</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6 max-w-2xl mx-auto font-sans">
+
+  <h1 class="text-3xl font-bold mb-6 text-emerald-400">Daily Habit Tracker</h1>
+
+  <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg mb-8">
+    <form id="habit-form" class="space-y-6">
+      
+      <div>
+        <label for="log-date" class="block text-sm font-medium text-slate-300 mb-2">Logging Date</label>
+        <input 
+          type="date" 
+          id="log-date" 
+          class="bg-slate-700 text-white rounded-lg px-4 py-2 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-3">Habits Completed Today</label>
+        <div id="habit-list" class="space-y-3">
+          </div>
+      </div>
+
+      <button 
+        type="submit" 
+        class="w-full bg-emerald-500 hover:bg-emerald-600 font-semibold py-2.5 px-4 rounded-lg transition duration-200 shadow-md hover:shadow-emerald-500/20"
+      >
+        Save Log Entries
+      </button>
+
+      <p id="status-msg" class="text-sm text-center font-medium min-h-[20px]"></p>
+    </form>
+  </div>
+
+  <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-semibold text-slate-200">Database Live Output (Debug View)</h2>
+      <button id="refresh-btn" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-slate-300">
+        Refresh Logs
+      </button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-slate-300">
+        <thead class="bg-slate-700/50 text-slate-400 uppercase text-xs">
+          <tr>
+            <th class="p-2">Date</th>
+            <th class="p-2">Habit</th>
+            <th class="p-2">Completed</th>
+          </tr>
+        </thead>
+        <tbody id="debug-table-body" class="divide-y divide-slate-700">
+          <tr>
+            <td colspan="3" class="p-3 text-center text-slate-500">Loading data...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // --- 1. CONFIGURATION ---
+    const SUPABASE_URL = 'https://cweudsoshirocewsxltq.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_v8bViIUVpF3IneYE-BkP_g_xe4odXO6';
+    // ✅ FIXED: Name the client variable supabaseClient
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // List of habits to track (you can add or edit habits here anytime)
+    const HABITS = [
+      "Drink water",
+"Eat well",
+"Sleep on time",
+"Brush your teeth",
+"Shower",
+"Don't goon",
+"Don't crack your knuckles",
+"Don't eat your boogers",
+"Don't be negative with Charlotte",
+"Don't play games for too long"
+    ];
+
+    // --- 2. INITIALIZATION ---
+    const dateInput = document.getElementById('log-date');
+    const habitListContainer = document.getElementById('habit-list');
+    const form = document.getElementById('habit-form');
+    const statusMsg = document.getElementById('status-msg');
+    const debugTableBody = document.getElementById('debug-table-body');
+
+    // Auto-set date picker to local "YYYY-MM-DD" today
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = today;
+
+    // Render checkbox inputs dynamically
+    HABITS.forEach((habit, index) => {
+      const wrapper = document.createElement('label');
+      wrapper.className = 'flex items-center space-x-3 bg-slate-700/40 p-3 rounded-lg hover:bg-slate-700/70 cursor-pointer border border-slate-700/50';
+      wrapper.innerHTML = `
+        <input 
+          type="checkbox" 
+          value="${habit}" 
+          class="habit-checkbox w-5 h-5 rounded accent-emerald-500 bg-slate-600 border-slate-500"
+        >
+        <span class="text-slate-200 font-medium">${habit}</span>
+      `;
+      habitListContainer.appendChild(wrapper);
+    });
+
+    // --- 3. DATABASE FUNCTIONS ---
+    async function saveHabits(e) {
+      e.preventDefault();
+      statusMsg.textContent = "Saving...";
+      statusMsg.className = "text-sm text-center font-medium text-amber-400";
+
+      const selectedDate = dateInput.value;
+      const checkboxes = document.querySelectorAll('.habit-checkbox');
+
+      // Build payload for each habit
+      const records = Array.from(checkboxes).map(cb => ({
+        log_date: selectedDate,
+        habit_name: cb.value,
+        completed: cb.checked
+      }));
+
+      // Upsert: Overwrites existing logs if date + habit match, or inserts new rows
+      const { data, error } = await supabaseClient
+        .from('habit_logs')
+        .upsert(records, { onConflict: 'log_date,habit_name' });
+
+      if (error) {
+        statusMsg.textContent = `Error saving: ${error.message}`;
+        statusMsg.className = "text-sm text-center font-medium text-rose-400";
+      } else {
+        statusMsg.textContent = "Successfully saved!";
+        statusMsg.className = "text-sm text-center font-medium text-emerald-400";
+        fetchLogs(); // Reload debug view immediately
+      }
+    }
+
+    async function fetchLogs() {
+      const { data, error } = await supabaseClient
+        .from('habit_logs')
+        .select('*')
+        .order('log_date', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        debugTableBody.innerHTML = `<tr><td colspan="3" class="p-3 text-rose-400">${error.message}</td></tr>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        debugTableBody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500">No logs found in database.</td></tr>`;
+        return;
+      }
+
+      debugTableBody.innerHTML = data.map(row => `
+        <tr class="hover:bg-slate-700/30">
+          <td class="p-2 text-slate-300">${row.log_date}</td>
+          <td class="p-2 font-medium text-slate-200">${row.habit_name}</td>
+          <td class="p-2 font-semibold ${row.completed ? 'text-emerald-400' : 'text-slate-500'}">
+            ${row.completed ? '✓ Yes' : '✗ No'}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // --- 4. EVENT LISTENERS ---
+    form.addEventListener('submit', saveHabits);
+    document.getElementById('refresh-btn').addEventListener('click', fetchLogs);
+
+    // Initial load of debug table
+    fetchLogs();
+  </script>
+</body>
+</html>

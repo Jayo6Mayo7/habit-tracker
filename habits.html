@@ -3,36 +3,54 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Habit Tracker Prototype</title>
+  <title>Habit Tracker & Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .heatmap-grid {
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+      gap: 6px;
+    }
+  </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-6 max-w-2xl mx-auto font-sans">
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-6 max-w-2xl mx-auto font-sans">
 
-  <h1 class="text-3xl font-bold mb-6 text-emerald-400">Daily Habit Tracker</h1>
+  <!-- Header & Navigation Tabs -->
+  <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+    <h1 class="text-2xl font-bold text-emerald-400">Habit Tracker</h1>
+    <div class="flex space-x-2 bg-slate-800 p-1 rounded-lg border border-slate-700">
+      <button id="tab-log-btn" class="px-4 py-1.5 rounded-md text-sm font-semibold bg-emerald-500 text-slate-900 transition">Log Today</button>
+      <button id="tab-analytics-btn" class="px-4 py-1.5 rounded-md text-sm font-semibold text-slate-400 hover:text-slate-200 transition">Analytics</button>
+    </div>
+  </div>
 
-  <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg mb-8">
+  <!-- TAB 1: LOGGING VIEW -->
+  <div id="view-log">
     <form id="habit-form" class="space-y-6">
       
-      <div>
-        <label for="log-date" class="block text-sm font-medium text-slate-300 mb-2">Logging Date</label>
+      <!-- PROMINENT DATE PICKER -->
+      <div class="bg-amber-500/10 border-2 border-amber-500/40 p-4 rounded-xl shadow-lg">
+        <div class="flex justify-between items-center mb-1">
+          <label for="log-date" class="block text-sm font-bold text-amber-300 uppercase tracking-wider">Logging Date</label>
+          <span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-medium">Defaulted to Yesterday</span>
+        </div>
         <input 
           type="date" 
           id="log-date" 
-          class="bg-slate-700 text-white rounded-lg px-4 py-2 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          class="w-full bg-slate-800 text-amber-100 font-semibold rounded-lg px-4 py-2.5 border border-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-400 text-lg"
         />
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-slate-300 mb-3">Habits Completed Today</label>
+      <!-- HABIT CHECKLIST WITH INLINE STREAKS -->
+      <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+        <label class="block text-sm font-medium text-slate-300 mb-3">Habits Completed</label>
         <div id="habit-list" class="space-y-3">
-          </div>
+          <!-- Populated dynamically with checkboxes + flame badges -->
+        </div>
       </div>
 
-      <button 
-        type="submit" 
-        class="w-full bg-emerald-500 hover:bg-emerald-600 font-semibold py-2.5 px-4 rounded-lg transition duration-200 shadow-md hover:shadow-emerald-500/20"
-      >
+      <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 font-bold py-3 px-4 rounded-xl text-slate-950 transition shadow-lg shadow-emerald-500/10">
         Save Log Entries
       </button>
 
@@ -40,29 +58,41 @@
     </form>
   </div>
 
-  <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-lg font-semibold text-slate-200">Database Live Output (Debug View)</h2>
-      <button id="refresh-btn" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-slate-300">
-        Refresh Logs
-      </button>
+  <!-- TAB 2: ANALYTICS VIEW -->
+  <div id="view-analytics" class="hidden space-y-6">
+    
+    <!-- Habit Selector Dropdown -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between">
+      <label for="habit-select" class="text-sm font-medium text-slate-300">Select Habit:</label>
+      <select id="habit-select" class="bg-slate-700 text-white rounded-lg px-3 py-1.5 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        <!-- Options populated dynamically -->
+      </select>
     </div>
 
-    <div class="overflow-x-auto">
-      <table class="w-full text-left text-sm text-slate-300">
-        <thead class="bg-slate-700/50 text-slate-400 uppercase text-xs">
-          <tr>
-            <th class="p-2">Date</th>
-            <th class="p-2">Habit</th>
-            <th class="p-2">Completed</th>
-          </tr>
-        </thead>
-        <tbody id="debug-table-body" class="divide-y divide-slate-700">
-          <tr>
-            <td colspan="3" class="p-3 text-center text-slate-500">Loading data...</td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-2 gap-4">
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
+        <span class="text-xs text-slate-400 font-medium uppercase">Current Streak</span>
+        <div id="stat-current-streak" class="text-3xl font-extrabold text-amber-400 mt-1">🔥 0</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
+        <span class="text-xs text-slate-400 font-medium uppercase">Best Streak</span>
+        <div id="stat-best-streak" class="text-3xl font-extrabold text-emerald-400 mt-1">🏆 0</div>
+      </div>
+    </div>
+
+    <!-- Heatmap Grid -->
+    <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+      <h3 class="text-sm font-semibold text-slate-300 mb-3">Last 30 Days Consistency Grid</h3>
+      <div id="heatmap-container" class="heatmap-grid">
+        <!-- 30 square tiles generated dynamically -->
+      </div>
+      <div class="flex items-center justify-end space-x-2 mt-4 text-xs text-slate-400">
+        <span>Missed</span>
+        <div class="w-3 h-3 bg-slate-700 rounded-sm"></div>
+        <div class="w-3 h-3 bg-emerald-500 rounded-sm"></div>
+        <span>Completed</span>
+      </div>
     </div>
   </div>
 
@@ -87,97 +117,185 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 "Don't play games for too long"
     ];
 
+
+    let allLogs = [];
+
     // --- 2. INITIALIZATION ---
     const dateInput = document.getElementById('log-date');
     const habitListContainer = document.getElementById('habit-list');
-    const form = document.getElementById('habit-form');
-    const statusMsg = document.getElementById('status-msg');
-    const debugTableBody = document.getElementById('debug-table-body');
+    const habitSelect = document.getElementById('habit-select');
 
-    // Auto-set date picker to local "YYYY-MM-DD" today
-    const today = new Date().toISOString().split('T')[0];
-    dateInput.value = today;
+    // Default Date to Yesterday
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    dateInput.value = yesterday.toISOString().split('T')[0];
 
-    // Render checkbox inputs dynamically
-    HABITS.forEach((habit, index) => {
+    // Populate Checkbox List
+    HABITS.forEach(habit => {
       const wrapper = document.createElement('label');
-      wrapper.className = 'flex items-center space-x-3 bg-slate-700/40 p-3 rounded-lg hover:bg-slate-700/70 cursor-pointer border border-slate-700/50';
+      wrapper.className = 'flex items-center justify-between bg-slate-700/40 p-3 rounded-lg hover:bg-slate-700/70 cursor-pointer border border-slate-700/50';
       wrapper.innerHTML = `
-        <input 
-          type="checkbox" 
-          value="${habit}" 
-          class="habit-checkbox w-5 h-5 rounded accent-emerald-500 bg-slate-600 border-slate-500"
-        >
-        <span class="text-slate-200 font-medium">${habit}</span>
+        <div class="flex items-center space-x-3">
+          <input type="checkbox" value="${habit}" class="habit-checkbox w-5 h-5 rounded accent-emerald-500 bg-slate-600 border-slate-500">
+          <span class="text-slate-200 font-medium">${habit}</span>
+        </div>
+        <span id="streak-badge-${slugify(habit)}" class="text-xs font-semibold bg-amber-500/10 text-amber-400 px-2 py-1 rounded-md border border-amber-500/20">🔥 0 d</span>
       `;
       habitListContainer.appendChild(wrapper);
+
+      // Populate Analytics Dropdown
+      const opt = document.createElement('option');
+      opt.value = habit;
+      opt.textContent = habit;
+      habitSelect.appendChild(opt);
     });
 
-    // --- 3. DATABASE FUNCTIONS ---
-    async function saveHabits(e) {
+    function slugify(text) {
+      return text.toLowerCase().replace(/[^a-z0-0]/g, '-');
+    }
+
+    // --- 3. STREAK LOGIC ---
+    function computeStreaks(habitName) {
+      const filtered = allLogs.filter(l => l.habit_name === habitName && l.completed);
+      const uniqueDates = Array.from(new Set(filtered.map(l => l.log_date))).sort();
+
+      if (uniqueDates.length === 0) return { current: 0, best: 0 };
+
+      // Calculate Longest Streak
+      let maxRun = 0;
+      let currentRun = 0;
+      let prevDate = null;
+
+      uniqueDates.forEach(dateStr => {
+        const d = new Date(dateStr);
+        if (prevDate) {
+          const diffDays = Math.round((d - prevDate) / (1000 * 60 * 60 * 24));
+          currentRun = (diffDays === 1) ? currentRun + 1 : 1;
+        } else {
+          currentRun = 1;
+        }
+        if (currentRun > maxRun) maxRun = currentRun;
+        prevDate = d;
+      });
+
+      // Calculate Current Active Streak
+      let activeRun = 0;
+      let checkDate = new Date();
+      
+      // Allow current streak if completed today or yesterday
+      let checkStr = checkDate.toISOString().split('T')[0];
+      if (!uniqueDates.includes(checkStr)) {
+        checkDate.setDate(checkDate.getDate() - 1);
+        checkStr = checkDate.toISOString().split('T')[0];
+      }
+
+      while (uniqueDates.includes(checkStr)) {
+        activeRun++;
+        checkDate.setDate(checkDate.getDate() - 1);
+        checkStr = checkDate.toISOString().split('T')[0];
+      }
+
+      return { current: activeRun, best: maxRun };
+    }
+
+    // --- 4. RENDER ANALYTICS ---
+    function renderAnalytics() {
+      const selectedHabit = habitSelect.value;
+      const streaks = computeStreaks(selectedHabit);
+
+      document.getElementById('stat-current-streak').textContent = `🔥 ${streaks.current}`;
+      document.getElementById('stat-best-streak').textContent = `🏆 ${streaks.best}`;
+
+      // Render 30-Day Heatmap Grid
+      const container = document.getElementById('heatmap-container');
+      container.innerHTML = '';
+
+      const habitLogs = allLogs.filter(l => l.habit_name === selectedHabit);
+      const logMap = {};
+      habitLogs.forEach(l => logMap[l.log_date] = l.completed);
+
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const completed = logMap[dateStr] === true;
+
+        const tile = document.createElement('div');
+        tile.className = `h-10 rounded-md flex items-center justify-center text-[10px] font-mono transition ${
+          completed ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-slate-700/60 text-slate-500'
+        }`;
+        tile.title = `${dateStr}: ${completed ? 'Completed' : 'Missed'}`;
+        tile.textContent = d.getDate();
+        container.appendChild(tile);
+      }
+    }
+
+    // --- 5. DATA FETCH & SAVE ---
+    async function fetchAllData() {
+      const { data, error } = await supabaseClient.from('habit_logs').select('*');
+      if (!error && data) {
+        allLogs = data;
+        HABITS.forEach(habit => {
+          const s = computeStreaks(habit);
+          const badge = document.getElementById(`streak-badge-${slugify(habit)}`);
+          if (badge) badge.textContent = `🔥 ${s.current} d`;
+        });
+        renderAnalytics();
+      }
+    }
+
+    document.getElementById('habit-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const statusMsg = document.getElementById('status-msg');
       statusMsg.textContent = "Saving...";
       statusMsg.className = "text-sm text-center font-medium text-amber-400";
 
       const selectedDate = dateInput.value;
       const checkboxes = document.querySelectorAll('.habit-checkbox');
 
-      // Build payload for each habit
       const records = Array.from(checkboxes).map(cb => ({
         log_date: selectedDate,
         habit_name: cb.value,
         completed: cb.checked
       }));
 
-      // Upsert: Overwrites existing logs if date + habit match, or inserts new rows
-      const { data, error } = await supabaseClient
-        .from('habit_logs')
-        .upsert(records, { onConflict: 'log_date,habit_name' });
+      const { error } = await supabaseClient.from('habit_logs').upsert(records, { onConflict: 'log_date,habit_name' });
 
       if (error) {
-        statusMsg.textContent = `Error saving: ${error.message}`;
+        statusMsg.textContent = `Error: ${error.message}`;
         statusMsg.className = "text-sm text-center font-medium text-rose-400";
       } else {
-        statusMsg.textContent = "Successfully saved!";
+        statusMsg.textContent = "Saved successfully!";
         statusMsg.className = "text-sm text-center font-medium text-emerald-400";
-        fetchLogs(); // Reload debug view immediately
+        await fetchAllData();
       }
-    }
+    });
 
-    async function fetchLogs() {
-      const { data, error } = await supabaseClient
-        .from('habit_logs')
-        .select('*')
-        .order('log_date', { ascending: false })
-        .limit(20);
+    // --- 6. TAB SWITCHING ---
+    const tabLogBtn = document.getElementById('tab-log-btn');
+    const tabAnalyticsBtn = document.getElementById('tab-analytics-btn');
+    const viewLog = document.getElementById('view-log');
+    const viewAnalytics = document.getElementById('view-analytics');
 
-      if (error) {
-        debugTableBody.innerHTML = `<tr><td colspan="3" class="p-3 text-rose-400">${error.message}</td></tr>`;
-        return;
-      }
+    tabLogBtn.addEventListener('click', () => {
+      viewLog.classList.remove('hidden');
+      viewAnalytics.classList.add('hidden');
+      tabLogBtn.className = "px-4 py-1.5 rounded-md text-sm font-semibold bg-emerald-500 text-slate-900 transition";
+      tabAnalyticsBtn.className = "px-4 py-1.5 rounded-md text-sm font-semibold text-slate-400 hover:text-slate-200 transition";
+    });
 
-      if (!data || data.length === 0) {
-        debugTableBody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500">No logs found in database.</td></tr>`;
-        return;
-      }
+    tabAnalyticsBtn.addEventListener('click', () => {
+      viewAnalytics.classList.remove('hidden');
+      viewLog.classList.add('hidden');
+      tabAnalyticsBtn.className = "px-4 py-1.5 rounded-md text-sm font-semibold bg-emerald-500 text-slate-900 transition";
+      tabLogBtn.className = "px-4 py-1.5 rounded-md text-sm font-semibold text-slate-400 hover:text-slate-200 transition";
+      renderAnalytics();
+    });
 
-      debugTableBody.innerHTML = data.map(row => `
-        <tr class="hover:bg-slate-700/30">
-          <td class="p-2 text-slate-300">${row.log_date}</td>
-          <td class="p-2 font-medium text-slate-200">${row.habit_name}</td>
-          <td class="p-2 font-semibold ${row.completed ? 'text-emerald-400' : 'text-slate-500'}">
-            ${row.completed ? '✓ Yes' : '✗ No'}
-          </td>
-        </tr>
-      `).join('');
-    }
+    habitSelect.addEventListener('change', renderAnalytics);
 
-    // --- 4. EVENT LISTENERS ---
-    form.addEventListener('submit', saveHabits);
-    document.getElementById('refresh-btn').addEventListener('click', fetchLogs);
-
-    // Initial load of debug table
-    fetchLogs();
+    // Initial Load
+    fetchAllData();
   </script>
 </body>
 </html>

@@ -29,18 +29,20 @@
   <div id="view-log">
     <form id="habit-form" class="space-y-6">
       
-      <!-- PROMINENT DATE PICKER (Mobile-Optimized) -->
-      <div class="bg-amber-500/10 border-2 border-amber-500/40 p-4 rounded-xl shadow-lg w-full box-border">
-        <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
-          <label for="log-date" class="block text-sm font-bold text-amber-300 uppercase tracking-wider">Logging Date</label>
-          <span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-medium">Defaulted to Yesterday</span>
-        </div>
+      <!-- PROMINENT DATE PICKER (Fully Bounded for Mobile) -->
+    <div class="bg-amber-500/10 border-2 border-amber-500/40 p-4 rounded-xl shadow-lg w-full max-w-full overflow-hidden box-border">
+      <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+        <label for="log-date" class="block text-sm font-bold text-amber-300 uppercase tracking-wider">Logging Date</label>
+        <span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-medium">Defaulted to Yesterday</span>
+      </div>
+      <div class="w-full min-w-0">
         <input 
           type="date" 
           id="log-date" 
-          class="w-full box-border bg-slate-800 text-amber-100 font-semibold rounded-lg px-3 py-2 border border-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-400 text-base sm:text-lg max-w-full"
+          class="w-full box-border appearance-none bg-slate-800 text-amber-100 font-semibold rounded-lg px-3 py-2 border border-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-400 text-base max-w-full"
         />
       </div>
+    </div>
 
       <!-- HABIT CHECKLIST WITH INLINE STREAKS -->
       <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
